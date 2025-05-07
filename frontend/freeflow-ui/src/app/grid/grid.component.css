@@ -1,30 +1,74 @@
 /* grid.component.css */
 
-.contenedor-tablero {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 20px;
+/* --------- Controles superiores ---------- */
+.controls{
+  margin-bottom:1rem;
+  display:flex;
+  gap:.5rem;
+  align-items:center;
 }
 
-.fila {
-  display: flex;
-  gap: 2px;
+.file-upload{
+  background:#1976d2;
+  color:#fff;
+  padding:.4rem .8rem;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:.9rem;
+}
+.file-upload input{
+  display:none;
 }
 
-.celda {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #888;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 16px;
-  background-color: white;
-  color: black;
+/* --------------- Tablero ----------------- */
+.contenedor-tablero{
+  display:inline-block;          /* Mantiene el tamaño justo al tablero */
+  border:2px solid #333;
 }
 
-.celda-vacia {
-  background-color: #f0f0f0;
+.fila{
+  display:flex;                  /* Cada fila coloca las celdas en línea */
+}
+
+.celda{
+  width:42px;
+  height:42px;
+  border:1px solid #bbb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-weight:bold;
+  user-select:none;
+  cursor:pointer;
+}
+
+/* Estados de la celda */
+.celda-vacia{
+  background:#fff;
+}
+.celda-numero{
+  background:#e0e0e0;
+}
+.celda-camino{                   /* Color genérico para caminos */
+  background:#90caf9;
+}
+
+/* --------------- Modal ------------------- */
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.modal{
+  background:#fff;
+  padding:1rem 1.5rem;
+  border-radius:6px;
+  box-shadow:0 4px 10px rgba(0,0,0,.3);
+  text-align:center;
+}
+.modal button{
+  margin-top:.5rem;
 }

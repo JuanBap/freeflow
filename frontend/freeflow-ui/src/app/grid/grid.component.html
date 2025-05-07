@@ -1,16 +1,41 @@
 <!-- grid.component.html -->
-<input type="file" (change)="cargarTableroPorArchivo($event)" accept=".txt" />
+<div class="controls">
+  <label class="file-upload">
+    <input type="file"
+           (change)="cargarTableroPorArchivo($event)"
+           accept=".txt" />
+    Cargar tablero
+  </label>
 
-<br><br>
+  <button (click)="reiniciarTablero()">Reiniciar tablero</button>
+</div>
 
 <div class="contenedor-tablero">
-  <div *ngFor="let fila of tablero" class="fila">
+  <div *ngFor="let fila of tablero; let i = index" class="fila">
     <div
-      *ngFor="let celda of fila"
+      *ngFor="let celda of fila; let j = index"
       class="celda"
-      [ngClass]="{'celda-vacia': celda.valor === null}"
+      [ngClass]="{
+        'celda-vacia' : celda.valor === null,
+        'celda-numero': celda.valor !== null,
+        'celda-camino': celda.caminoId !== undefined && celda.valor === null
+      }"
+      [attr.data-caminoid]="celda.caminoId"
+      (mousedown)="iniciarTrazo(i, j)"
+      (mouseenter)="trazar(i, j)"
+      (mouseup)="finalizarTrazo(i, j)"
     >
-      {{celda.valor !== null ? celda.valor: ''}}
+      {{ celda.valor !== null ? celda.valor : '' }}
     </div>
+  </div>
+</div>
+
+<!-- Modal de victoria -->
+<div class="modal-backdrop"
+     *ngIf="showVictoryModal"
+     (click)="closeVictoryModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <p>🎉 ¡Felicidades! Has completado el tablero.</p>
+    <button (click)="closeVictoryModal()">Cerrar</button>
   </div>
 </div>
