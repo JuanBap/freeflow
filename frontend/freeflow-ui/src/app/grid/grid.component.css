@@ -1,40 +1,93 @@
 /* grid.component.css */
 
+/* --------- Estilos Globales y Contenedor Principal ---------- */
+:host { /* Aplica al componente en sí mismo */
+  display: block;
+  width: 100%;
+  font-family: 'Arial', sans-serif; /* Fuente genérica similar */
+}
+
+.app-container {
+  width: 100%;
+  max-width: 1200px;
+  position: relative;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  margin-bottom: 30px;
+}
+
+.game-title {
+  font-size: 2.2em; /* Tamaño del título */
+  color: #FFFFFF;  /* Color blanco para el título */
+  font-weight: bold;
+  margin: 0; /* Remover margen por defecto */
+}
+
+.game-container {
+  background-color: #2C2A4A; /* Fondo para el área de juego */
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 /* --------- Controles superiores ---------- */
 .controls{
-  margin-bottom:1rem;
-  display:flex;
-  gap:.5rem;
-  align-items:center;
-  justify-content:center;
+  display: flex;
+  gap: .8rem; /* Espacio entre botones */
+  align-items: center;
+}
+
+.file-upload, button{
+  color: #FFFFFF; /* Texto blanco */
+  padding: .6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .95rem;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em; /* Espacio entre icono y texto */
+  font-weight: 500;
+  transition: background-color 0.2s ease;
 }
 
 .file-upload{
-  background:#1976d2;
-  color:#fff;
-  padding:.4rem .8rem;
-  border-radius:4px;
-  cursor:pointer;
-  font-size:.9rem;
+  background: #56528C; /* Color para el botón Upload */
+}
+.file-upload:hover {
+  background: #4A477A;
 }
 .file-upload input{
-  display:none;
+  display: none;
 }
 
 button{
-  background:#e53935;
-  color:#fff;
-  padding:.4rem .8rem;
-  border-radius:4px;
-  cursor:pointer;
-  font-size:.9rem;
-  border:none;
+  background: #6A66A3; /* Color para el botón Reset */
+}
+button:hover {
+  background: #5D5A92;
+}
+
+.icon {
+  font-size: 1.1em; /* Tamaño de los iconos unicode */
 }
 
 /* --------------- Tablero ----------------- */
 .contenedor-tablero{
-  display:inline-block;          /* Mantiene el tamaño justo al tablero */
-  border:2px solid #333;
+  display: inline-block;          /* Mantiene el tamaño justo al tablero */
+  background-color: #3E3C61;  /* Fondo del área de la cuadrícula */
+  border-radius: 8px;         /* Bordes redondeados para el contenedor del tablero */
+  padding: 10px;              /* Espacio interior para que las celdas no peguen al borde */
+  /* border:2px solid #333;  Removido para el nuevo estilo */
 }
 
 .fila{
@@ -42,44 +95,93 @@ button{
 }
 
 .celda{
-  width:42px;
-  height:42px;
-  border:1px solid #bbb;
+  width:45px;  /* Ligeramente más grande */
+  height:45px; /* Ligeramente más grande */
+  /* border:1px solid #bbb; Removido, se usa box-shadow o nada */
   display:flex;
   justify-content:center;
   align-items:center;
   font-weight:bold;
   user-select:none;
   cursor:pointer;
+  margin: 2px; /* Pequeño espacio entre celdas */
+  border-radius: 6px; /* Bordes redondeados para las celdas */
+  transition: background-color 0.1s ease; /* Transición suave para el hover */
+  font-size: 1.2em; /* Tamaño del número en la celda */
+  color: #FFFFFF; /* Color de texto por defecto para números */
 }
 
 /* Estados de la celda */
 .celda-vacia{
-  background:#fff;
+  background:#4A4766; /* Color para celdas vacías */
 }
+.celda-vacia:hover {
+  background: #585578; /* Un poco más claro al pasar el mouse */
+}
+
+/* Estilo base para celdas con número (antes de aplicar color específico) */
 .celda-numero{
-  background:#e0e0e0;
+  /* El color de fondo se definirá por las clases color-X */
+  /* El color de texto es blanco por defecto en .celda */
 }
-.celda-camino{                   /* Color genérico para caminos */
-  background:#90caf9;
+
+/* Estilo base para celdas de camino (antes de aplicar color específico) */
+.celda-camino{
+  /* El color de fondo se definirá por las clases color-X basadas en data-caminoid */
 }
+
+
+/* Colores específicos para números y sus caminos */
+/* Color para el número 1 y su camino */
+.celda.color-1 { background-color: #F67280; } /* Rosa/Rojo */
+
+/* Color para el número 2 y su camino */
+.celda.color-2 { background-color: #7CE0C3; } /* Teal */
+
+/* Color para el número 3 y su camino */
+.celda.color-3 { background-color: #6EB5FF; } /* Azul claro */
+
+/* Color para el número 4 y su camino */
+.celda.color-4 { background-color: #90EE90; } /* Verde claro */
+
+/* Color para el número 5 y su camino */
+.celda.color-5 { background-color: #FDBA74; } /* Naranja/Amarillo claro */
+
+/* Puedes añadir más .color-X aquí si tu juego tiene más números */
+
 
 /* --------------- Modal ------------------- */
 .modal-backdrop{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.4);
+  background:rgba(0,0,0,.6); /* Fondo del backdrop un poco más oscuro */
   display:flex;
   justify-content:center;
   align-items:center;
+  z-index: 1000; /* Asegurar que esté por encima de todo */
 }
 .modal{
-  background:#fff;
-  padding:1rem 1.5rem;
-  border-radius:6px;
-  box-shadow:0 4px 10px rgba(0,0,0,.3);
+  background:#3E3C61; /* Fondo oscuro para el modal, igual que el grid container */
+  color: #FFFFFF; /* Texto blanco para el modal */
+  padding:1.5rem 2rem;
+  border-radius:8px;
+  box-shadow:0 5px 15px rgba(0,0,0,.4);
   text-align:center;
 }
+.modal p {
+  font-size: 1.2em;
+  margin-bottom: 1em;
+}
 .modal button{
-  margin-top:.5rem;
+  background:#56528C; /* Mismo color que el botón Upload */
+  color:#FFFFFF;
+  padding:.6rem 1.2rem;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:1rem;
+  border:none;
+  transition: background-color 0.2s ease;
+}
+.modal button:hover {
+  background: #4A477A;
 }

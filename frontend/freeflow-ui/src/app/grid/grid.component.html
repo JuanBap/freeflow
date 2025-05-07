@@ -1,41 +1,53 @@
-<!-- grid.component.html -->
-<div class="controls">
-  <label class="file-upload">
-    <input type="file"
-           (change)="cargarTableroPorArchivo($event)"
-           accept=".txt" />
-    Cargar tablero
-  </label>
+<div class="app-container">
+  <div class="header">
+    <h2 class="game-title">FreeFlow</h2>
+    <div class="controls">
+      <label class="file-upload">
+        <input type="file"
+               (change)="cargarTableroPorArchivo($event)"
+               accept=".txt" />
+        <span class="icon">&#x21E7;</span> Upload </label>
+    
+      <button (click)="reiniciarTablero()">
+        <span class="icon">&#x21BB;</span> Reset </button>
+    </div>
+  </div>
 
-  <button (click)="reiniciarTablero()">Reiniciar tablero</button>
-</div>
-
-<div class="contenedor-tablero">
-  <div *ngFor="let fila of tablero; let i = index" class="fila">
-    <div
-      *ngFor="let celda of fila; let j = index"
-      class="celda"
-      [ngClass]="{
-        'celda-vacia' : celda.valor === null,
-        'celda-numero': celda.valor !== null,
-        'celda-camino': celda.caminoId !== undefined && celda.valor === null
-      }"
-      [attr.data-caminoid]="celda.caminoId"
-      (mousedown)="iniciarTrazo(i, j)"
-      (mouseenter)="trazar(i, j)"
-      (mouseup)="finalizarTrazo(i, j)"
-    >
-      {{ celda.valor !== null ? celda.valor : '' }}
+  <div class="game-container">
+    <div class="contenedor-tablero">
+      <div *ngFor="let fila of tablero; let i = index" class="fila">
+        <div
+          *ngFor="let celda of fila; let j = index"
+          class="celda"
+          [ngClass]="{
+            'celda-vacia': celda.valor === null && celda.caminoId === undefined,
+            'celda-numero': celda.valor !== null,
+            'celda-camino': celda.caminoId !== undefined && celda.valor === null,
+            'color-1': (celda.valor === 1 && celda.caminoId === undefined) || celda.caminoId === 1,
+            'color-2': (celda.valor === 2 && celda.caminoId === undefined) || celda.caminoId === 2,
+            'color-3': (celda.valor === 3 && celda.caminoId === undefined) || celda.caminoId === 3,
+            'color-4': (celda.valor === 4 && celda.caminoId === undefined) || celda.caminoId === 4,
+            'color-5': (celda.valor === 5 && celda.caminoId === undefined) || celda.caminoId === 5
+          }"
+          [attr.data-valor]="celda.valor" 
+          [attr.data-caminoid]="celda.caminoId"
+          (mousedown)="iniciarTrazo(i, j)"
+          (mouseenter)="trazar(i, j)"
+          (mouseup)="finalizarTrazo(i, j)"
+          (mouseleave)="trazando && !ultimaPos ? finalizarTrazo(i,j) : null" 
+          (dragstart)="$event.preventDefault()"
+        >
+          {{ (celda.valor !== null) ? celda.valor : '' }}
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Modal de victoria -->
 <div class="modal-backdrop"
-     *ngIf="showVictoryModal"
-     (click)="closeVictoryModal()">
-  <div class="modal" (click)="$event.stopPropagation()">
-    <p>🎉 ¡Felicidades! Has completado el tablero.</p>
-    <button (click)="closeVictoryModal()">Cerrar</button>
-  </div>
+   *ngIf="showVictoryModal"
+   (click)="closeVictoryModal()">
+<div class="modal" (click)="$event.stopPropagation()"> <p>🎉 ¡Felicidades! Has completado el tablero.</p>
+  <button (click)="closeVictoryModal()">Cerrar</button>
+</div>
 </div>
