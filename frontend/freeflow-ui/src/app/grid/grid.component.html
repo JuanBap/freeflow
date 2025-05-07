@@ -1,0 +1,16 @@
+<!-- grid.component.html -->
+<input type="file" (change)="cargarTableroPorArchivo($event)" accept=".txt" />
+
+<br><br>
+
+<div class="contenedor-tablero">
+  <div *ngFor="let fila of tablero" class="fila">
+    <div
+      *ngFor="let celda of fila"
+      class="celda"
+      [ngClass]="{'celda-vacia': celda.valor === null}"
+    >
+      {{celda.valor !== null ? celda.valor: ''}}
+    </div>
+  </div>
+</div>

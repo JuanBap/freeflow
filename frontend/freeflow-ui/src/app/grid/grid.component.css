@@ -1,0 +1,30 @@
+/* grid.component.css */
+
+.contenedor-tablero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 20px;
+}
+
+.fila {
+  display: flex;
+  gap: 2px;
+}
+
+.celda {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+  background-color: white;
+  color: black;
+}
+
+.celda-vacia {
+  background-color: #f0f0f0;
+}
