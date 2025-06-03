@@ -11,9 +11,18 @@
       <button (click)="reiniciarTablero()">
         <span class="icon">&#x21BB;</span> Reset </button>
 
-      <button (click)="autoResolver()" class="auto-solve-btn">
+      <button (click)="autoResolver()" class="auto-solve-btn" [disabled]="mostrandoPasos">
         <span class="icon">&#x2699;</span> Auto Solve </button>
     </div>
+  </div>
+
+  <!-- Indicador de progreso de pasos -->
+  <div *ngIf="mostrandoPasos" class="step-indicator">
+    <p>Resolviendo paso a paso...</p>
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="(pasoActual / pasosSolucion.length) * 100"></div>
+    </div>
+    <p>Paso {{ pasoActual + 1 }} de {{ pasosSolucion.length }}</p>
   </div>
 
   <div class="game-container">

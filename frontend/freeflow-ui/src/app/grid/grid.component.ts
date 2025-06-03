@@ -28,6 +28,12 @@ export class GridComponent implements OnInit {
   // Variables para auto-resolución
   private readonly DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]; // ↓ ↑ → ←
 
+  // Variables para mostrar pasos de resolución
+  pasosSolucion: { tablero: number[][], caminoNumero: number, paso: number }[] = [];
+  pasoActual: number = 0;
+  mostrandoPasos: boolean = false;
+  private intervaloPasos: any = null;
+
   //Inicializar el tablero
   ngOnInit(): void {
     this.crearTableroDefault();
@@ -399,19 +405,16 @@ export class GridComponent implements OnInit {
   autoResolver(): void {
     // Reiniciar tablero primero
     this.reiniciarTablero();
+    this.detenerAnimacionPasos();
 
     // Extraer endpoints del tablero actual
     const endpoints = this.extraerEndpoints();
     
-    // Resolver usando el algoritmo
-    const solucion = this.autoSolve(this.tablero.length, endpoints);
+    // Resolver usando el algoritmo paso a paso
+    const solucion = this.autoSolveConPasos(this.tablero.length, endpoints);
     
-    if (solucion) {
-      this.aplicarSolucion(solucion);
-      // Verificar victoria automáticamente
-      setTimeout(() => {
-        this.verificarVictoria();
-      }, 100);
+    if (solucion && this.pasosSolucion.length > 0) {
+      this.mostrarPasosPorPaso();
     } else {
       alert('No se pudo encontrar una solución para este tablero.');
     }
@@ -593,6 +596,156 @@ export class GridComponent implements OnInit {
         } else if (celdaActual.valor !== null && valorSolucion !== 0) {
           // Es una celda de número, marcarla como parte del camino
           celdaActual.caminoId = valorSolucion;
+        }
+      }
+    }
+  }
+
+  private autoSolveConPasos(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }): number[][] | null {
+    const n = boardSize;
+    const grid: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
+    
+    // Reiniciar pasos de solución
+    this.pasosSolucion = [];
+    
+    // Marcar endpoints en el grid
+    for (const [numStr, positions] of Object.entries(endpoints)) {
+      const num = parseInt(numStr);
+      for (const pos of positions) {
+        grid[pos.i][pos.j] = num;
+      }
+    }
+
+    // Guardar estado inicial
+    this.pasosSolucion.push({
+      tablero: grid.map(row => [...row]),
+      caminoNumero: 0,
+      paso: 0
+    });
+
+    // Primero, encontrar la solución usando el algoritmo original
+    const solucionFinal = this.autoSolve(n, endpoints);
+    
+    if (!solucionFinal) {
+      return null;
+    }
+
+    // Ahora generar los pasos paso a paso para mostrar la construcción de la solución
+    this.generarPasosDeSolucion(grid, endpoints, solucionFinal);
+    
+    return solucionFinal;
+  }
+
+  private generarPasosDeSolucion(gridInicial: number[][], endpoints: { [num: number]: [Posicion, Posicion] }, solucionFinal: number[][]): void {
+    const grid = gridInicial.map(row => [...row]);
+    let numeroPaso = 1;
+
+    // Ordenar los números por algún criterio (ej: orden numérico)
+    const numerosOrdenados = Object.keys(endpoints).map(num => parseInt(num)).sort((a, b) => a - b);
+
+    for (const num of numerosOrdenados) {
+      const [start, end] = endpoints[num];
+      
+      // Encontrar el camino de este número en la solución final
+      const camino = this.extraerCaminoDeSolucion(start, end, num, solucionFinal);
+      
+      // Añadir cada celda del camino paso a paso
+      for (let i = 1; i < camino.length - 1; i++) { // Excluir start y end
+        const pos = camino[i];
+        grid[pos.i][pos.j] = num;
+        
+        // Registrar este paso
+        this.pasosSolucion.push({
+          tablero: grid.map(row => [...row]),
+          caminoNumero: num,
+          paso: numeroPaso++
+        });
+      }
+    }
+  }
+
+  private extraerCaminoDeSolucion(start: Posicion, end: Posicion, num: number, solucion: number[][]): Posicion[] {
+    const n = solucion.length;
+    const camino: Posicion[] = [start];
+    let actual = start;
+
+    // Seguir el camino desde start hasta end
+    while (actual.i !== end.i || actual.j !== end.j) {
+      let encontrado = false;
+      
+      for (const [dr, dc] of this.DIRS) {
+        const nr = actual.i + dr;
+        const nc = actual.j + dc;
+        
+        if (this.inBounds(nr, nc, n) && solucion[nr][nc] === num) {
+          // Verificar que no hayamos visitado esta celda ya
+          if (!camino.some(pos => pos.i === nr && pos.j === nc)) {
+            camino.push({ i: nr, j: nc });
+            actual = { i: nr, j: nc };
+            encontrado = true;
+            break;
+          }
+        }
+      }
+      
+      if (!encontrado) break; // Evitar bucles infinitos
+    }
+
+    return camino;
+  }
+
+  private mostrarPasosPorPaso(): void {
+    if (this.pasosSolucion.length === 0) return;
+    
+    this.mostrandoPasos = true;
+    this.pasoActual = 0;
+    
+    // Mostrar el primer paso (estado inicial)
+    this.aplicarPaso(this.pasosSolucion[0]);
+    
+    // Configurar intervalo para mostrar los siguientes pasos
+    this.intervaloPasos = setInterval(() => {
+      this.pasoActual++;
+      
+      if (this.pasoActual < this.pasosSolucion.length) {
+        this.aplicarPaso(this.pasosSolucion[this.pasoActual]);
+      } else {
+        // Finalizar animación
+        this.detenerAnimacionPasos();
+        this.mostrandoPasos = false;
+        
+        // Verificar victoria
+        setTimeout(() => {
+          this.verificarVictoria();
+        }, 500);
+      }
+    }, 800); // 800ms entre cada paso
+  }
+
+  private detenerAnimacionPasos(): void {
+    if (this.intervaloPasos) {
+      clearInterval(this.intervaloPasos);
+      this.intervaloPasos = null;
+    }
+    this.mostrandoPasos = false;
+  }
+
+  private aplicarPaso(paso: { tablero: number[][], caminoNumero: number, paso: number }): void {
+    // Limpiar caminos existentes pero mantener números
+    this.reiniciarTablero();
+
+    // Aplicar el estado del tablero en este paso
+    for (let i = 0; i < paso.tablero.length; i++) {
+      for (let j = 0; j < paso.tablero[i].length; j++) {
+        const valorPaso = paso.tablero[i][j];
+        const celdaActual = this.tablero[i][j];
+        
+        if (celdaActual.valor === null && valorPaso !== 0) {
+          // Es una celda de camino
+          celdaActual.caminoId = valorPaso;
+        } else if (celdaActual.valor !== null && valorPaso !== 0) {
+          // Es una celda de número, marcarla como parte del camino
+          celdaActual.caminoId = valorPaso;
         }
       }
     }
