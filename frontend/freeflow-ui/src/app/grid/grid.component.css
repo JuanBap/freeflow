@@ -77,6 +77,14 @@ button:hover {
   background: #5D5A92;
 }
 
+/* Estilo específico para el botón de auto-resolución */
+.auto-solve-btn {
+  background: #FF7F50 !important; /* Color naranja/coral distintivo */
+}
+.auto-solve-btn:hover {
+  background: #FF6347 !important; /* Color más intenso al hacer hover */
+}
+
 .icon {
   font-size: 1.1em; /* Tamaño de los iconos unicode */
 }

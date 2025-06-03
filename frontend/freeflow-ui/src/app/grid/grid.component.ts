@@ -25,6 +25,9 @@ export class GridComponent implements OnInit {
   // Modal de victoria
   showVictoryModal: boolean = false;
 
+  // Variables para auto-resolución
+  private readonly DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]; // ↓ ↑ → ←
+
   //Inicializar el tablero
   ngOnInit(): void {
     this.crearTableroDefault();
@@ -384,5 +387,214 @@ export class GridComponent implements OnInit {
       }
     }
     return false;
+  }
+
+  // ─────────────────────────────────────────────
+  // ALGORITMO DE AUTO-RESOLUCIÓN
+  // ─────────────────────────────────────────────
+
+  /**
+   * Función principal para auto-resolver el tablero
+   */
+  autoResolver(): void {
+    // Reiniciar tablero primero
+    this.reiniciarTablero();
+
+    // Extraer endpoints del tablero actual
+    const endpoints = this.extraerEndpoints();
+    
+    // Resolver usando el algoritmo
+    const solucion = this.autoSolve(this.tablero.length, endpoints);
+    
+    if (solucion) {
+      this.aplicarSolucion(solucion);
+      // Verificar victoria automáticamente
+      setTimeout(() => {
+        this.verificarVictoria();
+      }, 100);
+    } else {
+      alert('No se pudo encontrar una solución para este tablero.');
+    }
+  }
+
+  /**
+   * Extrae los endpoints (números) del tablero actual
+   */
+  private extraerEndpoints(): { [num: number]: [Posicion, Posicion] } {
+    const numerosMap = new Map<number, Posicion[]>();
+    
+    for (let i = 0; i < this.tablero.length; i++) {
+      for (let j = 0; j < this.tablero[i].length; j++) {
+        const valor = this.tablero[i][j].valor;
+        if (valor !== null) {
+          if (!numerosMap.has(valor)) {
+            numerosMap.set(valor, []);
+          }
+          numerosMap.get(valor)!.push({ i, j });
+        }
+      }
+    }
+
+    const endpoints: { [num: number]: [Posicion, Posicion] } = {};
+    for (const [num, positions] of numerosMap.entries()) {
+      if (positions.length === 2) {
+        endpoints[num] = [positions[0], positions[1]];
+      }
+    }
+    
+    return endpoints;
+  }
+
+  /**
+   * Comprueba si (r,c) está dentro del tablero
+   */
+  private inBounds(r: number, c: number, n: number): boolean {
+    return 0 <= r && r < n && 0 <= c && c < n;
+  }
+
+  /**
+   * Encuentra todos los caminos ortogonales posibles entre dos puntos
+   */
+  private allPaths(start: Posicion, end: Posicion, grid: number[][], limit: number = 1000): Posicion[][] {
+    const n = grid.length;
+    const paths: Posicion[][] = [];
+
+    const dfs = (r: number, c: number, path: Posicion[]): void => {
+      if (paths.length >= limit) return; // evita explosión combinatoria
+      
+      if (r === end.i && c === end.j) {
+        paths.push([...path]);
+        return;
+      }
+
+      for (const [dr, dc] of this.DIRS) {
+        const nr = r + dr;
+        const nc = c + dc;
+        
+        if (this.inBounds(nr, nc, n) && !path.some(p => p.i === nr && p.j === nc)) {
+          if (grid[nr][nc] === 0 || (nr === end.i && nc === end.j)) {
+            path.push({ i: nr, j: nc });
+            dfs(nr, nc, path);
+            path.pop();
+          }
+        }
+      }
+    };
+
+    dfs(start.i, start.j, [start]);
+    return paths;
+  }
+
+  /**
+   * Escoge el par cuyo número de caminos válidos es mínimo (MRV - Minimum Remaining Values)
+   */
+  private selectPair(pairs: { [num: number]: [Posicion, Posicion] }, grid: number[][]): 
+    { num: number | null, paths: Posicion[][] | null } {
+    
+    let bestNum: number | null = null;
+    let bestPaths: Posicion[][] | null = null;
+
+    for (const [numStr, [start, end]] of Object.entries(pairs)) {
+      const num = parseInt(numStr);
+      const paths = this.allPaths(start, end, grid);
+      
+      if (paths.length === 0) {
+        return { num: null, paths: null }; // sin caminos → poda
+      }
+      
+      if (bestPaths === null || paths.length < bestPaths.length) {
+        bestNum = num;
+        bestPaths = paths;
+        if (paths.length === 1) break; // MRV óptimo
+      }
+    }
+
+    return { num: bestNum, paths: bestPaths };
+  }
+
+  /**
+   * Algoritmo principal de resolución usando backtracking
+   */
+  private autoSolve(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }): number[][] | null {
+    const n = boardSize;
+    const grid: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
+    
+    // Marcar endpoints en el grid
+    for (const [numStr, positions] of Object.entries(endpoints)) {
+      const num = parseInt(numStr);
+      for (const pos of positions) {
+        grid[pos.i][pos.j] = num;
+      }
+    }
+
+    const pairs = { ...endpoints };
+    let solution: number[][] | null = null;
+
+    const backtrack = (remaining: { [num: number]: [Posicion, Posicion] }): void => {
+      if (solution !== null) return;
+      
+      if (Object.keys(remaining).length === 0) {
+        // ¿tablero completo?
+        const isComplete = grid.every(row => row.every(cell => cell !== 0));
+        if (isComplete) {
+          solution = grid.map(row => [...row]);
+        }
+        return;
+      }
+
+      const { num, paths } = this.selectPair(remaining, grid);
+      if (num === null) return; // callejón sin salida
+
+      for (const path of paths!) {
+        // Verificar si se puede colocar el camino
+        const canPlace = path.slice(1, -1).every(pos => grid[pos.i][pos.j] === 0);
+        if (!canPlace) continue;
+
+        // Colocar el camino (sin los extremos, ya marcados)
+        for (const pos of path.slice(1, -1)) {
+          grid[pos.i][pos.j] = num;
+        }
+
+        // Crear nuevo objeto remaining sin el número actual
+        const newRemaining = { ...remaining };
+        delete newRemaining[num];
+
+        backtrack(newRemaining);
+
+        // Deshacer (backtracking)
+        for (const pos of path.slice(1, -1)) {
+          grid[pos.i][pos.j] = 0;
+        }
+
+        if (solution !== null) return; // si ya existe, evita más trabajo
+      }
+    };
+
+    backtrack(pairs);
+    return solution;
+  }
+
+  /**
+   * Aplica la solución encontrada al tablero visual
+   */
+  private aplicarSolucion(solucion: number[][]): void {
+    // Limpiar caminos existentes pero mantener números
+    this.reiniciarTablero();
+
+    // Aplicar la solución
+    for (let i = 0; i < solucion.length; i++) {
+      for (let j = 0; j < solucion[i].length; j++) {
+        const valorSolucion = solucion[i][j];
+        const celdaActual = this.tablero[i][j];
+        
+        if (celdaActual.valor === null && valorSolucion !== 0) {
+          // Es una celda de camino
+          celdaActual.caminoId = valorSolucion;
+        } else if (celdaActual.valor !== null && valorSolucion !== 0) {
+          // Es una celda de número, marcarla como parte del camino
+          celdaActual.caminoId = valorSolucion;
+        }
+      }
+    }
   }
 }
