@@ -6,4 +6,7 @@ export interface Celda {
     caminoId?: number;
     //Direccion del pipe (up, down, left, right )
     direccion?: string;
+    // Propiedades para visualización de estadísticas
+    esDelCaminoActual?: boolean;
+    caminoExitoso?: boolean;
 }

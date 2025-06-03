@@ -4,12 +4,16 @@
 :host { /* Aplica al componente en sí mismo */
   display: block;
   width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   font-family: 'Arial', sans-serif; /* Fuente genérica similar */
+  padding: 20px;
 }
 
 .app-container {
   width: 100%;
   max-width: 1200px;
+  margin: 0 auto;
   position: relative;
 }
 
@@ -248,4 +252,65 @@ button:hover {
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+/* --------------- Botón de Estadísticas ----------------- */
+.stats-button-container {
+  background-color: #3E3C61;
+  padding: 25px;
+  margin: 20px 0;
+  border-radius: 12px;
+  text-align: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.completion-message h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.4em;
+  color: #7CE0C3;
+}
+
+.completion-message p {
+  margin: 0 0 20px 0;
+  font-size: 1.1em;
+  opacity: 0.9;
+}
+
+.stats-btn {
+  background: linear-gradient(135deg, #6EB5FF, #5A9BFF) !important;
+  color: #FFFFFF !important;
+  padding: 15px 30px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 15px rgba(110, 181, 255, 0.3) !important;
+}
+
+.stats-btn:hover {
+  background: linear-gradient(135deg, #5A9BFF, #4A8BFF) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(110, 181, 255, 0.4) !important;
+}
+
+.stats-btn .icon {
+  font-size: 1.2em !important;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

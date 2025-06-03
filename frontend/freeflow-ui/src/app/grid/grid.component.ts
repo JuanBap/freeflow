@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 //Modelo de celda
 import { Celda } from '../model/celda.model'; // Comentado si defines arriba o ya lo tienes
 
@@ -33,6 +34,31 @@ export class GridComponent implements OnInit {
   pasoActual: number = 0;
   mostrandoPasos: boolean = false;
   private intervaloPasos: any = null;
+
+  // Variables para estadísticas del algoritmo
+  estadisticasAlgoritmo: {
+    caminosExplorados: number;
+    callejonesSinSalida: number;
+    caminosExitosos: number;
+    historialExploracion: {
+      numero: number;
+      camino: Posicion[];
+      exitoso: boolean;
+      razonFallo?: string;
+      tableroEstado: number[][];
+    }[];
+    tiempoEjecucion: number;
+  } = {
+    caminosExplorados: 0,
+    callejonesSinSalida: 0,
+    caminosExitosos: 0,
+    historialExploracion: [],
+    tiempoEjecucion: 0
+  };
+
+  mostrarBotonEstadisticas: boolean = false;
+
+  constructor(private router: Router) { }
 
   //Inicializar el tablero
   ngOnInit(): void {
@@ -605,8 +631,18 @@ export class GridComponent implements OnInit {
     const n = boardSize;
     const grid: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
     
-    // Reiniciar pasos de solución
+    // Reiniciar pasos de solución y estadísticas
     this.pasosSolucion = [];
+    this.estadisticasAlgoritmo = {
+      caminosExplorados: 0,
+      callejonesSinSalida: 0,
+      caminosExitosos: 0,
+      historialExploracion: [],
+      tiempoEjecucion: 0
+    };
+    this.mostrarBotonEstadisticas = false;
+
+    const tiempoInicio = performance.now();
     
     // Marcar endpoints en el grid
     for (const [numStr, positions] of Object.entries(endpoints)) {
@@ -623,17 +659,103 @@ export class GridComponent implements OnInit {
       paso: 0
     });
 
-    // Primero, encontrar la solución usando el algoritmo original
-    const solucionFinal = this.autoSolve(n, endpoints);
+    // Resolver con estadísticas detalladas
+    const solucionFinal = this.autoSolveConEstadisticas(n, endpoints, grid);
+    
+    const tiempoFin = performance.now();
+    this.estadisticasAlgoritmo.tiempoEjecucion = tiempoFin - tiempoInicio;
     
     if (!solucionFinal) {
       return null;
     }
 
-    // Ahora generar los pasos paso a paso para mostrar la construcción de la solución
-    this.generarPasosDeSolucion(grid, endpoints, solucionFinal);
+    // Generar los pasos paso a paso para mostrar la construcción de la solución
+    this.generarPasosDeSolucion(grid.map(row => [...row]), endpoints, solucionFinal);
     
     return solucionFinal;
+  }
+
+  private autoSolveConEstadisticas(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }, grid: number[][]): number[][] | null {
+    const pairs = { ...endpoints };
+    let solution: number[][] | null = null;
+
+    const backtrackConEstadisticas = (remaining: { [num: number]: [Posicion, Posicion] }): void => {
+      if (solution !== null) return;
+      
+      if (Object.keys(remaining).length === 0) {
+        const isComplete = grid.every(row => row.every(cell => cell !== 0));
+        if (isComplete) {
+          solution = grid.map(row => [...row]);
+        }
+        return;
+      }
+
+      const { num, paths } = this.selectPair(remaining, grid);
+      if (num === null) {
+        this.estadisticasAlgoritmo.callejonesSinSalida++;
+        this.estadisticasAlgoritmo.historialExploracion.push({
+          numero: 0,
+          camino: [],
+          exitoso: false,
+          razonFallo: 'No hay caminos disponibles',
+          tableroEstado: grid.map(row => [...row])
+        });
+        return;
+      }
+
+      for (const path of paths!) {
+        this.estadisticasAlgoritmo.caminosExplorados++;
+        
+        const canPlace = path.slice(1, -1).every(pos => grid[pos.i][pos.j] === 0);
+        if (!canPlace) {
+          this.estadisticasAlgoritmo.callejonesSinSalida++;
+          this.estadisticasAlgoritmo.historialExploracion.push({
+            numero: num,
+            camino: [...path],
+            exitoso: false,
+            razonFallo: 'Camino bloqueado por otro trazado',
+            tableroEstado: grid.map(row => [...row])
+          });
+          continue;
+        }
+
+        // Colocar el camino
+        for (const pos of path.slice(1, -1)) {
+          grid[pos.i][pos.j] = num;
+        }
+
+        // Registrar estado antes de continuar
+        this.estadisticasAlgoritmo.historialExploracion.push({
+          numero: num,
+          camino: [...path],
+          exitoso: true,
+          tableroEstado: grid.map(row => [...row])
+        });
+
+        const newRemaining = { ...remaining };
+        delete newRemaining[num];
+
+        backtrackConEstadisticas(newRemaining);
+
+        // Si no se encontró solución con este camino, deshacerlo
+        if (solution === null) {
+          for (const pos of path.slice(1, -1)) {
+            grid[pos.i][pos.j] = 0;
+          }
+          
+          // Marcar como callejón sin salida si llegamos hasta aquí
+          this.estadisticasAlgoritmo.callejonesSinSalida++;
+          this.estadisticasAlgoritmo.historialExploracion[this.estadisticasAlgoritmo.historialExploracion.length - 1].exitoso = false;
+          this.estadisticasAlgoritmo.historialExploracion[this.estadisticasAlgoritmo.historialExploracion.length - 1].razonFallo = 'Backtracking: no hay solución con este camino';
+        } else {
+          this.estadisticasAlgoritmo.caminosExitosos++;
+          return;
+        }
+      }
+    };
+
+    backtrackConEstadisticas(pairs);
+    return solution;
   }
 
   private generarPasosDeSolucion(gridInicial: number[][], endpoints: { [num: number]: [Posicion, Posicion] }, solucionFinal: number[][]): void {
@@ -714,6 +836,9 @@ export class GridComponent implements OnInit {
         this.detenerAnimacionPasos();
         this.mostrandoPasos = false;
         
+        // Mostrar botón de estadísticas
+        this.mostrarBotonEstadisticas = true;
+        
         // Verificar victoria
         setTimeout(() => {
           this.verificarVictoria();
@@ -749,5 +874,13 @@ export class GridComponent implements OnInit {
         }
       }
     }
+  }
+
+  verEstadisticas(): void {
+    this.router.navigate(['/stats'], {
+      state: {
+        estadisticas: this.estadisticasAlgoritmo
+      }
+    });
   }
 }

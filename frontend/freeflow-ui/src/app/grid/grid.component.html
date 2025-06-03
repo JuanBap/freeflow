@@ -25,6 +25,17 @@
     <p>Paso {{ pasoActual + 1 }} de {{ pasosSolucion.length }}</p>
   </div>
 
+  <!-- Botón de estadísticas -->
+  <div *ngIf="mostrarBotonEstadisticas" class="stats-button-container">
+    <div class="completion-message">
+      <h3>🎯 ¡Resolución completada!</h3>
+      <p>El algoritmo ha encontrado la solución. ¿Quieres ver cómo lo hizo?</p>
+    </div>
+    <button (click)="verEstadisticas()" class="stats-btn">
+      <span class="icon">📊</span> Ver Estadísticas del Algoritmo
+    </button>
+  </div>
+
   <div class="game-container">
     <div class="contenedor-tablero">
       <div *ngFor="let fila of tablero; let i = index" class="fila">
