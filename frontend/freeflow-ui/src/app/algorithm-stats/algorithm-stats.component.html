@@ -1,0 +1,102 @@
+<div class="stats-container" *ngIf="estadisticas">
+  <div class="header">
+    <h2 class="title">📊 Estadísticas del Algoritmo</h2>
+    <button (click)="volverAlJuego()" class="back-btn">
+      <span class="icon">← </span> Volver al Juego
+    </button>
+  </div>
+
+  <div class="stats-summary">
+    <div class="stat-card">
+      <div class="stat-number">{{ estadisticas.caminosExplorados }}</div>
+      <div class="stat-label">Caminos Explorados</div>
+    </div>
+    <div class="stat-card error">
+      <div class="stat-number">{{ estadisticas.callejonesSinSalida }}</div>
+      <div class="stat-label">Callejones Sin Salida</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-number">{{ estadisticas.caminosExitosos }}</div>
+      <div class="stat-label">Caminos Exitosos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ (estadisticas.tiempoEjecucion).toFixed(2) }}ms</div>
+      <div class="stat-label">Tiempo de Ejecución</div>
+    </div>
+  </div>
+
+  <div class="content-layout">
+    <!-- Lista de exploraciones -->
+    <div class="exploration-list">
+      <h3>🔍 Historial de Exploración</h3>
+      <div class="exploration-items">
+        <div 
+          *ngFor="let exploracion of estadisticas.historialExploracion; let i = index"
+          class="exploration-item"
+          [ngClass]="{
+            'success': exploracion.exitoso && !exploracion.razonFallo,
+            'error': !exploracion.exitoso || exploracion.razonFallo,
+            'active': mostrandoEstado && estadoActual === i
+          }"
+          (click)="mostrarEstado(i)">
+          <div class="item-header">
+            <span class="item-number">Intento {{ i + 1 }}</span>
+            <span class="item-status" 
+                  [ngClass]="{
+                    'status-success': exploracion.exitoso && !exploracion.razonFallo,
+                    'status-error': !exploracion.exitoso || exploracion.razonFallo
+                  }">
+              {{ exploracion.exitoso && !exploracion.razonFallo ? '✓' : '✗' }}
+            </span>
+          </div>
+          <div class="item-details">
+            <div><strong>Número:</strong> {{ exploracion.numero || 'N/A' }}</div>
+            <div><strong>Camino:</strong> {{ exploracion.camino.length }} celdas</div>
+            <div *ngIf="exploracion.razonFallo" class="failure-reason">
+              <strong>Razón del fallo:</strong> {{ exploracion.razonFallo }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualización del tablero -->
+    <div class="board-visualization">
+      <h3>🎯 Visualización del Estado</h3>
+      <div *ngIf="!mostrandoEstado" class="no-state-selected">
+        <p>Selecciona un intento de la lista para ver el estado del tablero</p>
+      </div>
+      
+      <div *ngIf="mostrandoEstado" class="board-container">
+        <div class="state-info">
+          <h4>Estado del Intento {{ estadoActual + 1 }}</h4>
+          <button (click)="ocultarEstado()" class="hide-btn">Ocultar</button>
+        </div>
+        
+        <div class="tablero-stats">
+          <div *ngFor="let fila of tableroVisualizacion; let i = index" class="fila">
+            <div
+              *ngFor="let celda of fila; let j = index"
+              class="celda"
+              [ngClass]="{
+                'celda-vacia': celda.valor === null && celda.caminoId === undefined,
+                'celda-numero': celda.valor !== null,
+                'celda-camino': celda.caminoId !== undefined && celda.valor === null,
+                'celda-camino-actual': celda.esDelCaminoActual && celda.caminoExitoso,
+                'celda-camino-fallido': celda.esDelCaminoActual && !celda.caminoExitoso,
+                'color-1': (celda.valor === 1 && celda.caminoId === undefined) || celda.caminoId === 1,
+                'color-2': (celda.valor === 2 && celda.caminoId === undefined) || celda.caminoId === 2,
+                'color-3': (celda.valor === 3 && celda.caminoId === undefined) || celda.caminoId === 3,
+                'color-4': (celda.valor === 4 && celda.caminoId === undefined) || celda.caminoId === 4,
+                'color-5': (celda.valor === 5 && celda.caminoId === undefined) || celda.caminoId === 5
+              }"
+              [attr.data-valor]="celda.valor" 
+              [attr.data-caminoid]="celda.caminoId">
+              {{ (celda.valor !== null) ? celda.valor : '' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
