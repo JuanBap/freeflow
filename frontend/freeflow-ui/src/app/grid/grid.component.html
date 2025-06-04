@@ -1,6 +1,7 @@
 <div class="app-container">
-  <div class="header">
+  <div class="main-content">
     <h2 class="game-title">FreeFlow</h2>
+    
     <div class="controls">
       <label class="file-upload">
         <input type="file"
@@ -11,56 +12,66 @@
       <button (click)="reiniciarTablero()">
         <span class="icon">&#x21BB;</span> Reset </button>
 
-      <button (click)="autoResolver()" class="auto-solve-btn" [disabled]="mostrandoPasos">
+      <button (click)="autoResolver()" class="auto-solve-btn" [disabled]="ejecutandoAutosolve || mostrandoPasos">
         <span class="icon">&#x2699;</span> Auto Solve </button>
     </div>
-  </div>
 
-  <!-- Indicador de progreso de pasos -->
-  <div *ngIf="mostrandoPasos" class="step-indicator">
-    <p>Resolviendo paso a paso...</p>
-    <div class="progress-bar">
-      <div class="progress-fill" [style.width.%]="(pasoActual / pasosSolucion.length) * 100"></div>
+    <!-- Indicador de progreso de solución -->
+    <div *ngIf="mostrandoPasos" class="step-indicator">
+      <p>Mostrando solución paso a paso...</p>
+      
+      <div *ngIf="pasosSolucion.length > 0" class="progress-bar">
+        <div class="progress-fill" [style.width.%]="(pasoActual / pasosSolucion.length) * 100"></div>
+      </div>
+      
+      <p *ngIf="pasosSolucion.length > 0">Paso {{ pasoActual }} de {{ pasosSolucion.length }}</p>
+      
+      <!-- Indicar qué camino se está trazando -->
+      <div *ngIf="pasoActual > 0 && pasosSolucion && pasosSolucion[pasoActual - 1] && pasosSolucion[pasoActual - 1].caminoNumero > 0" class="explore-indicator">
+        <span class="explore-icon">🔍</span> Trazando camino {{ pasosSolucion[pasoActual - 1].caminoNumero }}
+      </div>
     </div>
-    <p>Paso {{ pasoActual + 1 }} de {{ pasosSolucion.length }}</p>
-  </div>
 
-  <!-- Botón de estadísticas -->
-  <div *ngIf="mostrarBotonEstadisticas" class="stats-button-container">
-    <div class="completion-message">
-      <h3>🎯 ¡Resolución completada!</h3>
-      <p>El algoritmo ha encontrado la solución. ¿Quieres ver cómo lo hizo?</p>
+    <!-- Botón de estadísticas -->
+    <div *ngIf="mostrarBotonEstadisticas" class="stats-button-container">
+      <div class="completion-message">
+        <h3 *ngIf="estadisticasAlgoritmo.caminosExitosos > 0">🎯 ¡Resolución completada!</h3>
+        <h3 *ngIf="estadisticasAlgoritmo.caminosExitosos === 0">🔍 Exploración completada</h3>
+        
+        <p *ngIf="estadisticasAlgoritmo.caminosExitosos > 0">El algoritmo ha encontrado la solución. ¿Quieres ver cómo lo hizo?</p>
+        <p *ngIf="estadisticasAlgoritmo.caminosExitosos === 0">El algoritmo exploró todos los caminos posibles pero no encontró solución. ¿Quieres ver el proceso de exploración?</p>
+      </div>
+      <button (click)="verEstadisticas()" class="stats-btn">
+        <span class="icon">📊</span> Ver Estadísticas del Algoritmo
+      </button>
     </div>
-    <button (click)="verEstadisticas()" class="stats-btn">
-      <span class="icon">📊</span> Ver Estadísticas del Algoritmo
-    </button>
-  </div>
 
-  <div class="game-container">
-    <div class="contenedor-tablero">
-      <div *ngFor="let fila of tablero; let i = index" class="fila">
-        <div
-          *ngFor="let celda of fila; let j = index"
-          class="celda"
-          [ngClass]="{
-            'celda-vacia': celda.valor === null && celda.caminoId === undefined,
-            'celda-numero': celda.valor !== null,
-            'celda-camino': celda.caminoId !== undefined && celda.valor === null,
-            'color-1': (celda.valor === 1 && celda.caminoId === undefined) || celda.caminoId === 1,
-            'color-2': (celda.valor === 2 && celda.caminoId === undefined) || celda.caminoId === 2,
-            'color-3': (celda.valor === 3 && celda.caminoId === undefined) || celda.caminoId === 3,
-            'color-4': (celda.valor === 4 && celda.caminoId === undefined) || celda.caminoId === 4,
-            'color-5': (celda.valor === 5 && celda.caminoId === undefined) || celda.caminoId === 5
-          }"
-          [attr.data-valor]="celda.valor" 
-          [attr.data-caminoid]="celda.caminoId"
-          (mousedown)="iniciarTrazo(i, j)"
-          (mouseenter)="trazar(i, j)"
-          (mouseup)="finalizarTrazo(i, j)"
-          (mouseleave)="trazando && !ultimaPos ? finalizarTrazo(i,j) : null" 
-          (dragstart)="$event.preventDefault()"
-        >
-          {{ (celda.valor !== null) ? celda.valor : '' }}
+    <div class="game-container">
+      <div class="contenedor-tablero">
+        <div *ngFor="let fila of tablero; let i = index" class="fila">
+          <div
+            *ngFor="let celda of fila; let j = index"
+            class="celda"
+            [ngClass]="{
+              'celda-vacia': celda.valor === null && celda.caminoId === undefined,
+              'celda-numero': celda.valor !== null,
+              'celda-camino': celda.caminoId !== undefined && celda.valor === null,
+              'color-1': (celda.valor === 1 && celda.caminoId === undefined) || celda.caminoId === 1,
+              'color-2': (celda.valor === 2 && celda.caminoId === undefined) || celda.caminoId === 2,
+              'color-3': (celda.valor === 3 && celda.caminoId === undefined) || celda.caminoId === 3,
+              'color-4': (celda.valor === 4 && celda.caminoId === undefined) || celda.caminoId === 4,
+              'color-5': (celda.valor === 5 && celda.caminoId === undefined) || celda.caminoId === 5
+            }"
+            [attr.data-valor]="celda.valor" 
+            [attr.data-caminoid]="celda.caminoId"
+            (mousedown)="iniciarTrazo(i, j)"
+            (mouseenter)="trazar(i, j)"
+            (mouseup)="finalizarTrazo(i, j)"
+            (mouseleave)="trazando && !ultimaPos ? finalizarTrazo(i,j) : null" 
+            (dragstart)="$event.preventDefault()"
+          >
+            {{ (celda.valor !== null) ? celda.valor : '' }}
+          </div>
         </div>
       </div>
     </div>

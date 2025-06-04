@@ -29,11 +29,14 @@ export class GridComponent implements OnInit {
   // Variables para auto-resolución
   private readonly DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]; // ↓ ↑ → ←
 
-  // Variables para mostrar pasos de resolución
+  // Variables para mostrar pasos de la solución correcta
   pasosSolucion: { tablero: number[][], caminoNumero: number, paso: number }[] = [];
   pasoActual: number = 0;
   mostrandoPasos: boolean = false;
   private intervaloPasos: any = null;
+
+  // Variable para identificar si se está ejecutando un autosolve
+  ejecutandoAutosolve: boolean = false;
 
   // Variables para estadísticas del algoritmo
   estadisticasAlgoritmo: {
@@ -433,16 +436,37 @@ export class GridComponent implements OnInit {
     this.reiniciarTablero();
     this.detenerAnimacionPasos();
 
+    // Marcar que se está ejecutando un autosolve
+    this.ejecutandoAutosolve = true;
+
     // Extraer endpoints del tablero actual
     const endpoints = this.extraerEndpoints();
     
-    // Resolver usando el algoritmo paso a paso
-    const solucion = this.autoSolveConPasos(this.tablero.length, endpoints);
+    // Crear grid para el algoritmo
+    const n = this.tablero.length;
+    const grid: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
     
-    if (solucion && this.pasosSolucion.length > 0) {
+    // Marcar endpoints en el grid
+    for (const [numStr, positions] of Object.entries(endpoints)) {
+      const num = parseInt(numStr);
+      for (const pos of positions) {
+        grid[pos.i][pos.j] = num;
+      }
+    }
+    
+    // Resolver usando el algoritmo
+    const solucion = this.autoSolveConEstadisticas(n, endpoints, grid);
+    
+    if (solucion) {
+      // Generar pasos de la solución correcta
+      this.generarPasosSolucionCorrecta(endpoints, solucion);
+      // Mostrar la solución paso a paso
       this.mostrarPasosPorPaso();
     } else {
-      alert('No se pudo encontrar una solución para este tablero.');
+      // No hay solución, mostrar botón de estadísticas inmediatamente
+      this.mostrarBotonEstadisticas = true;
+      this.ejecutandoAutosolve = false;
+      alert('No se encontró solución para este tablero.');
     }
   }
 
@@ -629,10 +653,11 @@ export class GridComponent implements OnInit {
     }
   }
 
-  private autoSolveConPasos(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }): number[][] | null {
-    const n = boardSize;
-    
-    // Reiniciar estadísticas (los pasos ahora se capturan en autoSolveConEstadisticas)
+  private autoSolveConEstadisticas(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }, grid: number[][]): number[][] | null {
+    const pairs = { ...endpoints };
+    let solution: number[][] | null = null;
+
+    // Reiniciar estadísticas
     this.estadisticasAlgoritmo = {
       caminosExplorados: 0,
       callejonesSinSalida: 0,
@@ -640,53 +665,8 @@ export class GridComponent implements OnInit {
       historialExploracion: [],
       tiempoEjecucion: 0
     };
-    this.mostrarBotonEstadisticas = false;
 
     const tiempoInicio = performance.now();
-    
-    // Crear grid separado para el algoritmo (NO modificar el tablero visual aún)
-    const gridParaAlgoritmo: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
-    
-    // Marcar endpoints en el grid del algoritmo
-    for (const [numStr, positions] of Object.entries(endpoints)) {
-      const num = parseInt(numStr);
-      for (const pos of positions) {
-        gridParaAlgoritmo[pos.i][pos.j] = num;
-      }
-    }
-
-    // Resolver con estadísticas detalladas usando grid separado
-    const solucionFinal = this.autoSolveConEstadisticas(n, endpoints, gridParaAlgoritmo);
-    
-    const tiempoFin = performance.now();
-    this.estadisticasAlgoritmo.tiempoEjecucion = tiempoFin - tiempoInicio;
-    
-    if (!solucionFinal) {
-      return null;
-    }
-
-    // YA NO necesitamos generar pasos artificialmente - se capturan durante la ejecución
-    // this.generarPasosDeSolucionLimpia(endpoints, solucionFinal); <-- REMOVIDO
-    
-    return solucionFinal;
-  }
-
-  private autoSolveConEstadisticas(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }, grid: number[][]): number[][] | null {
-    const pairs = { ...endpoints };
-    let solution: number[][] | null = null;
-
-    // Reiniciar pasos de solución - NUEVO: capturar pasos durante ejecución
-    this.pasosSolucion = [];
-    
-    // Guardar estado inicial (solo endpoints)
-    const gridInicial = grid.map(row => [...row]);
-    this.pasosSolucion.push({
-      tablero: gridInicial,
-      caminoNumero: 0,
-      paso: 0
-    });
-
-    let numeroPasoGlobal = 1;
 
     const backtrackConEstadisticas = (remaining: { [num: number]: [Posicion, Posicion] }): void => {
       if (solution !== null) return;
@@ -734,16 +714,6 @@ export class GridComponent implements OnInit {
           grid[pos.i][pos.j] = num;
         }
 
-        // NUEVO: Capturar cada paso del camino que realmente se está colocando
-        for (let i = 1; i < path.length - 1; i++) {
-          const pos = path[i];
-          this.pasosSolucion.push({
-            tablero: grid.map(row => [...row]),
-            caminoNumero: num,
-            paso: numeroPasoGlobal++
-          });
-        }
-
         // Registrar estado antes de continuar
         this.estadisticasAlgoritmo.historialExploracion.push({
           numero: num,
@@ -759,18 +729,11 @@ export class GridComponent implements OnInit {
 
         // Si no se encontró solución con este camino, deshacerlo
         if (solution === null) {
-          // NUEVO: Remover los pasos que corresponden a este camino fallido
-          const pasosDeCaminoFallido = path.length - 2; // número de celdas intermedias
-          for (let i = 0; i < pasosDeCaminoFallido; i++) {
-            this.pasosSolucion.pop();
-          }
-          numeroPasoGlobal -= pasosDeCaminoFallido;
-
           for (const pos of path.slice(1, -1)) {
             grid[pos.i][pos.j] = 0;
           }
           
-          // Marcar como callejón sin salida si llegamos hasta aquí
+          // Marcar como callejón sin salida
           this.estadisticasAlgoritmo.callejonesSinSalida++;
           this.estadisticasAlgoritmo.historialExploracion[this.estadisticasAlgoritmo.historialExploracion.length - 1].exitoso = false;
           this.estadisticasAlgoritmo.historialExploracion[this.estadisticasAlgoritmo.historialExploracion.length - 1].razonFallo = 'Backtracking: no hay solución con este camino';
@@ -782,9 +745,109 @@ export class GridComponent implements OnInit {
     };
 
     backtrackConEstadisticas(pairs);
+    
+    const tiempoFin = performance.now();
+    this.estadisticasAlgoritmo.tiempoEjecucion = tiempoFin - tiempoInicio;
+    
     return solution;
   }
 
+  verEstadisticas(): void {
+    this.router.navigate(['/stats'], {
+      state: {
+        estadisticas: this.estadisticasAlgoritmo
+      }
+    });
+  }
+
+  /**
+   * Genera los pasos de la solución correcta para mostrar paso a paso
+   */
+  private generarPasosSolucionCorrecta(endpoints: { [num: number]: [Posicion, Posicion] }, solucion: number[][]): void {
+    this.pasosSolucion = [];
+    
+    // Paso inicial: solo endpoints
+    const estadoInicial = solucion.map(row => [...row]);
+    for (let i = 0; i < estadoInicial.length; i++) {
+      for (let j = 0; j < estadoInicial[i].length; j++) {
+        if (estadoInicial[i][j] !== 0) {
+          // Solo mantener si es un endpoint
+          const esEndpoint = Object.values(endpoints).some(([pos1, pos2]) => 
+            (pos1.i === i && pos1.j === j) || (pos2.i === i && pos2.j === j)
+          );
+          if (!esEndpoint) {
+            estadoInicial[i][j] = 0;
+          }
+        }
+      }
+    }
+    
+    this.pasosSolucion.push({
+      tablero: estadoInicial,
+      caminoNumero: 0,
+      paso: 0
+    });
+
+    // Ordenar números para trazarlos en orden
+    const numerosOrdenados = Object.keys(endpoints).map(Number).sort((a, b) => a - b);
+    let pasoGlobal = 1;
+
+    for (const numero of numerosOrdenados) {
+      const [inicio, fin] = endpoints[numero];
+      
+      // Encontrar el camino de este número en la solución
+      const caminoCompleto = this.encontrarCaminoEnSolucion(numero, inicio, fin, solucion);
+      
+      // Agregar cada celda del camino paso a paso (sin incluir endpoints)
+      for (let i = 1; i < caminoCompleto.length - 1; i++) {
+        const pos = caminoCompleto[i];
+        const nuevoEstado = this.pasosSolucion[this.pasosSolucion.length - 1].tablero.map(row => [...row]);
+        nuevoEstado[pos.i][pos.j] = numero;
+        
+        this.pasosSolucion.push({
+          tablero: nuevoEstado,
+          caminoNumero: numero,
+          paso: pasoGlobal++
+        });
+      }
+    }
+  }
+
+  /**
+   * Encuentra el camino de un número específico en la solución usando BFS
+   */
+  private encontrarCaminoEnSolucion(numero: number, inicio: Posicion, fin: Posicion, solucion: number[][]): Posicion[] {
+    const visitados = new Set<string>();
+    const cola: { pos: Posicion, camino: Posicion[] }[] = [{ pos: inicio, camino: [inicio] }];
+    visitados.add(`${inicio.i}-${inicio.j}`);
+
+    while (cola.length > 0) {
+      const { pos, camino } = cola.shift()!;
+      
+      if (pos.i === fin.i && pos.j === fin.j) {
+        return camino;
+      }
+
+      for (const [dr, dc] of this.DIRS) {
+        const nr = pos.i + dr;
+        const nc = pos.j + dc;
+        const key = `${nr}-${nc}`;
+        
+        if (nr >= 0 && nr < solucion.length && nc >= 0 && nc < solucion[0].length && !visitados.has(key)) {
+          if (solucion[nr][nc] === numero) {
+            visitados.add(key);
+            cola.push({ pos: { i: nr, j: nc }, camino: [...camino, { i: nr, j: nc }] });
+          }
+        }
+      }
+    }
+    
+    return [inicio, fin]; // Fallback
+  }
+
+  /**
+   * Muestra la solución paso a paso
+   */
   private mostrarPasosPorPaso(): void {
     if (this.pasosSolucion.length === 0) return;
     
@@ -807,22 +870,32 @@ export class GridComponent implements OnInit {
         // Mostrar botón de estadísticas
         this.mostrarBotonEstadisticas = true;
         
-        // Verificar victoria
+        // Verificar victoria al final
         setTimeout(() => {
           this.verificarVictoria();
         }, 500);
+        
+        // Resetear flag de autosolve al finalizar
+        this.ejecutandoAutosolve = false;
       }
-    }, 400); // Cambiado de 800ms a 400ms para duplicar velocidad
+    }, 600); // Velocidad de animación
   }
 
+  /**
+   * Detiene la animación de pasos
+   */
   private detenerAnimacionPasos(): void {
     if (this.intervaloPasos) {
       clearInterval(this.intervaloPasos);
       this.intervaloPasos = null;
     }
     this.mostrandoPasos = false;
+    this.ejecutandoAutosolve = false;
   }
 
+  /**
+   * Aplica un paso específico al tablero visual
+   */
   private aplicarPaso(paso: { tablero: number[][], caminoNumero: number, paso: number }): void {
     // Aplicar el estado del tablero en este paso
     for (let i = 0; i < paso.tablero.length; i++) {
@@ -839,16 +912,14 @@ export class GridComponent implements OnInit {
             // Es una celda de número, marcarla como parte del camino
             celdaActual.caminoId = valorPaso;
           }
+        } else {
+          // Si valorPaso es 0, limpiar la celda
+          if (celdaActual.valor === null) {
+            delete celdaActual.caminoId;
+            delete celdaActual.direccion;
+          }
         }
       }
     }
-  }
-
-  verEstadisticas(): void {
-    this.router.navigate(['/stats'], {
-      state: {
-        estadisticas: this.estadisticasAlgoritmo
-      }
-    });
   }
 }
