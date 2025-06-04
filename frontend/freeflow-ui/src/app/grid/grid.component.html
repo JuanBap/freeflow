@@ -12,24 +12,8 @@
       <button (click)="reiniciarTablero()">
         <span class="icon">&#x21BB;</span> Reset </button>
 
-      <button (click)="autoResolver()" class="auto-solve-btn" [disabled]="ejecutandoAutosolve || mostrandoPasos">
+      <button (click)="autoResolver()" class="auto-solve-btn" [disabled]="ejecutandoAutosolve">
         <span class="icon">&#x2699;</span> Auto Solve </button>
-    </div>
-
-    <!-- Indicador de progreso de solución -->
-    <div *ngIf="mostrandoPasos" class="step-indicator">
-      <p>Mostrando solución paso a paso...</p>
-      
-      <div *ngIf="pasosSolucion.length > 0" class="progress-bar">
-        <div class="progress-fill" [style.width.%]="(pasoActual / pasosSolucion.length) * 100"></div>
-      </div>
-      
-      <p *ngIf="pasosSolucion.length > 0">Paso {{ pasoActual }} de {{ pasosSolucion.length }}</p>
-      
-      <!-- Indicar qué camino se está trazando -->
-      <div *ngIf="pasoActual > 0 && pasosSolucion && pasosSolucion[pasoActual - 1] && pasosSolucion[pasoActual - 1].caminoNumero > 0" class="explore-indicator">
-        <span class="explore-icon">🔍</span> Trazando camino {{ pasosSolucion[pasoActual - 1].caminoNumero }}
-      </div>
     </div>
 
     <!-- Botón de estadísticas -->
