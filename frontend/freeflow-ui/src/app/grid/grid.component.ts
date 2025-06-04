@@ -29,12 +29,6 @@ export class GridComponent implements OnInit {
   // Variables para auto-resolución
   private readonly DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]; // ↓ ↑ → ←
 
-  // Variables para mostrar pasos de la solución correcta
-  pasosSolucion: { tablero: number[][], caminoNumero: number, paso: number }[] = [];
-  pasoActual: number = 0;
-  mostrandoPasos: boolean = false;
-  private intervaloPasos: any = null;
-
   // Variable para identificar si se está ejecutando un autosolve
   ejecutandoAutosolve: boolean = false;
 
@@ -434,7 +428,6 @@ export class GridComponent implements OnInit {
   autoResolver(): void {
     // Reiniciar tablero primero
     this.reiniciarTablero();
-    this.detenerAnimacionPasos();
 
     // Marcar que se está ejecutando un autosolve
     this.ejecutandoAutosolve = true;
@@ -458,10 +451,8 @@ export class GridComponent implements OnInit {
     const solucion = this.autoSolveConEstadisticas(n, endpoints, grid);
     
     if (solucion) {
-      // Generar pasos de la solución correcta
-      this.generarPasosSolucionCorrecta(endpoints, solucion);
-      // Mostrar la solución paso a paso
-      this.mostrarPasosPorPaso();
+      // Aplicar la solución con delay entre caminos
+      this.aplicarSolucionConDelay(solucion, endpoints);
     } else {
       // No hay solución, mostrar botón de estadísticas inmediatamente
       this.mostrarBotonEstadisticas = true;
@@ -630,30 +621,66 @@ export class GridComponent implements OnInit {
   }
 
   /**
-   * Aplica la solución encontrada al tablero visual
+   * Aplica la solución con delay de 1 segundo entre cada camino
    */
-  private aplicarSolucion(solucion: number[][]): void {
-    // Limpiar caminos existentes pero mantener números
-    this.reiniciarTablero();
+  private aplicarSolucionConDelay(solucion: number[][], endpoints: { [num: number]: [Posicion, Posicion] }): void {
+    // Obtener números ordenados
+    const numerosOrdenados = Object.keys(endpoints).map(Number).sort((a, b) => a - b);
+    let indiceActual = 0;
 
-    // Aplicar la solución
+    const aplicarSiguienteCamino = () => {
+      if (indiceActual >= numerosOrdenados.length) {
+        // Todos los caminos aplicados
+        this.mostrarBotonEstadisticas = true;
+        
+        // Verificar victoria
+        setTimeout(() => {
+          this.verificarVictoria();
+        }, 1000);
+        
+        // Resetear flag de autosolve
+        this.ejecutandoAutosolve = false;
+        return;
+      }
+
+      const numero = numerosOrdenados[indiceActual];
+      this.aplicarCaminoIndividual(solucion, numero);
+      
+      indiceActual++;
+      
+      // Continuar con el siguiente camino después de 1 segundo
+      setTimeout(aplicarSiguienteCamino, 1000);
+    };
+
+    // Iniciar la aplicación secuencial
+    aplicarSiguienteCamino();
+  }
+
+  /**
+   * Aplica un camino individual para un número específico
+   */
+  private aplicarCaminoIndividual(solucion: number[][], numero: number): void {
     for (let i = 0; i < solucion.length; i++) {
       for (let j = 0; j < solucion[i].length; j++) {
         const valorSolucion = solucion[i][j];
         const celdaActual = this.tablero[i][j];
         
-        if (celdaActual.valor === null && valorSolucion !== 0) {
-          // Es una celda de camino
-          celdaActual.caminoId = valorSolucion;
-        } else if (celdaActual.valor !== null && valorSolucion !== 0) {
-          // Es una celda de número, marcarla como parte del camino
-          celdaActual.caminoId = valorSolucion;
+        if (valorSolucion === numero) {
+          if (celdaActual.valor === null) {
+            // Es una celda de camino
+            celdaActual.caminoId = valorSolucion;
+          } else if (celdaActual.valor === valorSolucion) {
+            // Es una celda de número, marcarla como parte del camino
+            celdaActual.caminoId = valorSolucion;
+          }
         }
       }
     }
   }
 
   private autoSolveConEstadisticas(boardSize: number, endpoints: { [num: number]: [Posicion, Posicion] }, grid: number[][]): number[][] | null {
+    // Crear una copia del grid para no modificar el original
+    const gridTrabajo: number[][] = grid.map(row => [...row]);
     const pairs = { ...endpoints };
     let solution: number[][] | null = null;
 
@@ -673,14 +700,14 @@ export class GridComponent implements OnInit {
       
       if (Object.keys(remaining).length === 0) {
         // ¿tablero completo? - VERIFICACIÓN ESTRICTA
-        const isComplete = grid.every(row => row.every(cell => cell !== 0));
+        const isComplete = gridTrabajo.every(row => row.every(cell => cell !== 0));
         if (isComplete) {
-          solution = grid.map(row => [...row]);
+          solution = gridTrabajo.map(row => [...row]);
         }
         return;
       }
 
-      const { num, paths } = this.selectPair(remaining, grid);
+      const { num, paths } = this.selectPair(remaining, gridTrabajo);
       if (num === null) {
         this.estadisticasAlgoritmo.callejonesSinSalida++;
         this.estadisticasAlgoritmo.historialExploracion.push({
@@ -688,7 +715,7 @@ export class GridComponent implements OnInit {
           camino: [],
           exitoso: false,
           razonFallo: 'No hay caminos disponibles',
-          tableroEstado: grid.map(row => [...row])
+          tableroEstado: gridTrabajo.map(row => [...row])
         });
         return;
       }
@@ -696,7 +723,7 @@ export class GridComponent implements OnInit {
       for (const path of paths!) {
         this.estadisticasAlgoritmo.caminosExplorados++;
         
-        const canPlace = path.slice(1, -1).every(pos => grid[pos.i][pos.j] === 0);
+        const canPlace = path.slice(1, -1).every(pos => gridTrabajo[pos.i][pos.j] === 0);
         if (!canPlace) {
           this.estadisticasAlgoritmo.callejonesSinSalida++;
           this.estadisticasAlgoritmo.historialExploracion.push({
@@ -704,14 +731,14 @@ export class GridComponent implements OnInit {
             camino: [...path],
             exitoso: false,
             razonFallo: 'Camino bloqueado por otro trazado',
-            tableroEstado: grid.map(row => [...row])
+            tableroEstado: gridTrabajo.map(row => [...row])
           });
           continue;
         }
 
         // Colocar el camino
         for (const pos of path.slice(1, -1)) {
-          grid[pos.i][pos.j] = num;
+          gridTrabajo[pos.i][pos.j] = num;
         }
 
         // Registrar estado antes de continuar
@@ -719,7 +746,7 @@ export class GridComponent implements OnInit {
           numero: num,
           camino: [...path],
           exitoso: true,
-          tableroEstado: grid.map(row => [...row])
+          tableroEstado: gridTrabajo.map(row => [...row])
         });
 
         const newRemaining = { ...remaining };
@@ -730,7 +757,7 @@ export class GridComponent implements OnInit {
         // Si no se encontró solución con este camino, deshacerlo
         if (solution === null) {
           for (const pos of path.slice(1, -1)) {
-            grid[pos.i][pos.j] = 0;
+            gridTrabajo[pos.i][pos.j] = 0;
           }
           
           // Marcar como callejón sin salida
@@ -758,168 +785,5 @@ export class GridComponent implements OnInit {
         estadisticas: this.estadisticasAlgoritmo
       }
     });
-  }
-
-  /**
-   * Genera los pasos de la solución correcta para mostrar paso a paso
-   */
-  private generarPasosSolucionCorrecta(endpoints: { [num: number]: [Posicion, Posicion] }, solucion: number[][]): void {
-    this.pasosSolucion = [];
-    
-    // Paso inicial: solo endpoints
-    const estadoInicial = solucion.map(row => [...row]);
-    for (let i = 0; i < estadoInicial.length; i++) {
-      for (let j = 0; j < estadoInicial[i].length; j++) {
-        if (estadoInicial[i][j] !== 0) {
-          // Solo mantener si es un endpoint
-          const esEndpoint = Object.values(endpoints).some(([pos1, pos2]) => 
-            (pos1.i === i && pos1.j === j) || (pos2.i === i && pos2.j === j)
-          );
-          if (!esEndpoint) {
-            estadoInicial[i][j] = 0;
-          }
-        }
-      }
-    }
-    
-    this.pasosSolucion.push({
-      tablero: estadoInicial,
-      caminoNumero: 0,
-      paso: 0
-    });
-
-    // Ordenar números para trazarlos en orden
-    const numerosOrdenados = Object.keys(endpoints).map(Number).sort((a, b) => a - b);
-    let pasoGlobal = 1;
-
-    for (const numero of numerosOrdenados) {
-      const [inicio, fin] = endpoints[numero];
-      
-      // Encontrar el camino de este número en la solución
-      const caminoCompleto = this.encontrarCaminoEnSolucion(numero, inicio, fin, solucion);
-      
-      // Agregar cada celda del camino paso a paso (sin incluir endpoints)
-      for (let i = 1; i < caminoCompleto.length - 1; i++) {
-        const pos = caminoCompleto[i];
-        const nuevoEstado = this.pasosSolucion[this.pasosSolucion.length - 1].tablero.map(row => [...row]);
-        nuevoEstado[pos.i][pos.j] = numero;
-        
-        this.pasosSolucion.push({
-          tablero: nuevoEstado,
-          caminoNumero: numero,
-          paso: pasoGlobal++
-        });
-      }
-    }
-  }
-
-  /**
-   * Encuentra el camino de un número específico en la solución usando BFS
-   */
-  private encontrarCaminoEnSolucion(numero: number, inicio: Posicion, fin: Posicion, solucion: number[][]): Posicion[] {
-    const visitados = new Set<string>();
-    const cola: { pos: Posicion, camino: Posicion[] }[] = [{ pos: inicio, camino: [inicio] }];
-    visitados.add(`${inicio.i}-${inicio.j}`);
-
-    while (cola.length > 0) {
-      const { pos, camino } = cola.shift()!;
-      
-      if (pos.i === fin.i && pos.j === fin.j) {
-        return camino;
-      }
-
-      for (const [dr, dc] of this.DIRS) {
-        const nr = pos.i + dr;
-        const nc = pos.j + dc;
-        const key = `${nr}-${nc}`;
-        
-        if (nr >= 0 && nr < solucion.length && nc >= 0 && nc < solucion[0].length && !visitados.has(key)) {
-          if (solucion[nr][nc] === numero) {
-            visitados.add(key);
-            cola.push({ pos: { i: nr, j: nc }, camino: [...camino, { i: nr, j: nc }] });
-          }
-        }
-      }
-    }
-    
-    return [inicio, fin]; // Fallback
-  }
-
-  /**
-   * Muestra la solución paso a paso
-   */
-  private mostrarPasosPorPaso(): void {
-    if (this.pasosSolucion.length === 0) return;
-    
-    this.mostrandoPasos = true;
-    this.pasoActual = 0;
-    
-    // Limpiar tablero antes de empezar
-    this.reiniciarTablero();
-    
-    // Configurar intervalo para mostrar los pasos
-    this.intervaloPasos = setInterval(() => {
-      if (this.pasoActual < this.pasosSolucion.length) {
-        this.aplicarPaso(this.pasosSolucion[this.pasoActual]);
-        this.pasoActual++;
-      } else {
-        // Finalizar animación
-        this.detenerAnimacionPasos();
-        this.mostrandoPasos = false;
-        
-        // Mostrar botón de estadísticas
-        this.mostrarBotonEstadisticas = true;
-        
-        // Verificar victoria al final
-        setTimeout(() => {
-          this.verificarVictoria();
-        }, 500);
-        
-        // Resetear flag de autosolve al finalizar
-        this.ejecutandoAutosolve = false;
-      }
-    }, 600); // Velocidad de animación
-  }
-
-  /**
-   * Detiene la animación de pasos
-   */
-  private detenerAnimacionPasos(): void {
-    if (this.intervaloPasos) {
-      clearInterval(this.intervaloPasos);
-      this.intervaloPasos = null;
-    }
-    this.mostrandoPasos = false;
-    this.ejecutandoAutosolve = false;
-  }
-
-  /**
-   * Aplica un paso específico al tablero visual
-   */
-  private aplicarPaso(paso: { tablero: number[][], caminoNumero: number, paso: number }): void {
-    // Aplicar el estado del tablero en este paso
-    for (let i = 0; i < paso.tablero.length; i++) {
-      for (let j = 0; j < paso.tablero[i].length; j++) {
-        const valorPaso = paso.tablero[i][j];
-        const celdaActual = this.tablero[i][j];
-        
-        if (valorPaso !== 0) {
-          // Actualizar el caminoId basado en el estado actual
-          if (celdaActual.valor === null) {
-            // Es una celda de camino
-            celdaActual.caminoId = valorPaso;
-          } else if (celdaActual.valor === valorPaso) {
-            // Es una celda de número, marcarla como parte del camino
-            celdaActual.caminoId = valorPaso;
-          }
-        } else {
-          // Si valorPaso es 0, limpiar la celda
-          if (celdaActual.valor === null) {
-            delete celdaActual.caminoId;
-            delete celdaActual.direccion;
-          }
-        }
-      }
-    }
   }
 }
