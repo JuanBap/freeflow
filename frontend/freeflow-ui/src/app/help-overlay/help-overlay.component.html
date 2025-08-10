@@ -1,0 +1,38 @@
+<div class="help-entry">
+  <button class="help-button" (click)="toggle()" aria-label="Open help">
+    ❓ Help
+  </button>
+</div>
+
+<div class="overlay-backdrop" *ngIf="isOpen" (click)="close()"></div>
+
+<div class="overlay-panel" *ngIf="isOpen" (click)="$event.stopPropagation()">
+  <div class="overlay-header">
+    <h3>👋 Welcome to FreeFlow</h3>
+    <button class="close-btn" (click)="close()" aria-label="Close">✖</button>
+  </div>
+
+  <div class="overlay-content">
+    <p>This app solves the FreeFlow puzzle: connect matching numbers with non‑crossing paths until the board is fully covered.</p>
+
+    <h4>🧠 How the algorithm works</h4>
+    <ul>
+      <li><strong>Exploration</strong>: extend paths step‑by‑step from each number.</li>
+      <li><strong>Validation</strong>: prune moves that block cells, go out of bounds, or cross existing paths.</li>
+      <li><strong>Backtracking</strong>: when a branch fails, undo steps and try alternatives (depth‑first search).</li>
+      <li><strong>Success</strong>: all pairs are connected and the board has no empty cells.</li>
+    </ul>
+
+    <h4>🕹️ How to use</h4>
+    <ul>
+      <li>Upload a board file (.txt) or use the examples.</li>
+      <li>Draw by dragging between equal numbers.</li>
+      <li>Use <strong>Auto Solve</strong> to let the algorithm run.</li>
+      <li>After it finishes, open <strong>View Statistics</strong> to inspect the search.</li>
+    </ul>
+
+    <p class="tip">Tip: press <kbd>Esc</kbd> to close.</p>
+  </div>
+</div>
+
+
